@@ -4,4 +4,8 @@ Vagrant.configure("2") do |config|
   config.vm.box_version = "20180917.0.0"
   config.vm.hostname = "ubuntu-1804.local"
   config.vm.network "private_network", ip: "192.168.33.11"
+  config.vm.provision "shell", inline: <<-SCRIPT
+sed -i "s/^PasswordAuthentication no$/#PasswordAuthentication yes/" /etc/ssh/sshd_config
+/etc/init.d/ssh restart
+  SCRIPT
 end
