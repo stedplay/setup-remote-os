@@ -31,6 +31,8 @@ def prepare():
   if key_file_path is None:
     sys.exit('Stop setup. Failed to create ssh key.')
 
+  return c, new_ssh_port, key_file_path, mail_address
+
 def create_ssh_key(c):
   # Parameters of ssh key.
   key_type = 'ecdsa'
@@ -46,13 +48,13 @@ def create_ssh_key(c):
   run(f'ls -l {key_file_path}*', echo=True)
   return key_file_path
 
-def setup():
+def setup(c, new_ssh_port, key_file_path, mail_address):
   pass
 
 def main():
   # Prepare setup.
-  prepare()
+  c, new_ssh_port, key_file_path, mail_address = prepare()
   # Start setup.
-  setup()
+  setup(c, new_ssh_port, key_file_path, mail_address)
 
 main()
