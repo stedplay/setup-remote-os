@@ -70,6 +70,7 @@ def setup(c, new_ssh_port, key_file_path, mail_address):
   setup_timezone(c)
   setup_apt(c)
   setup_sshd(c, new_ssh_port, key_file_path)
+  setup_iptables(c, new_ssh_port)
 
 @print_time
 def setup_timezone(c):
@@ -128,6 +129,34 @@ def setup_sshd(c, ssh_port, key_file_path):
   c.sudo('sshd -t')
   # Restart sshd
   c.sudo('/etc/init.d/ssh restart', warn=True)
+
+@print_time
+def setup_iptables(c, ssh_port):
+  # Accept connected packet.
+  c.sudo('iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT')
+  # Accept icmp packet.
+  c.sudo('iptables -A INPUT -p icmp -j ACCEPT')
+  # Accept the packet whose destination is local loopback address.
+  c.sudo('iptables -A INPUT -i lo -j ACCEPT')
+  # Accept ssh packet whose destination is ssh_port.
+  c.sudo(f'iptables -A INPUT -m state --state NEW -m tcp -p tcp --dport {ssh_port} -j ACCEPT')
+
+  # Log INPUT or FORWARD packet.
+  c.sudo('iptables -A INPUT -j LOG --log-prefix "INPUT_DROP:"')
+  c.sudo('iptables -A FORWARD -j LOG --log-prefix "FORWARD_DROP:"')
+  # Set default policy.
+  c.sudo("iptables -P INPUT DROP")
+  c.sudo("iptables -P FORWARD DROP")
+  c.sudo("iptables -P OUTPUT ACCEPT")
+
+  # Show current setting.
+  c.sudo("iptables -L -nv --line-numbers")
+  # Prevent apt from showing dialogs during installation of iptables-persistent.
+  # https://askubuntu.com/questions/339790/how-can-i-prevent-apt-get-aptitude-from-showing-dialogs-during-installation
+  c.sudo('sh -c "echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections"')
+  c.sudo('sh -c "echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections"')
+  # Install iptables-persistent to save setting of iptables.
+  c.sudo('apt -y install iptables-persistent')
 
 
 def main():
