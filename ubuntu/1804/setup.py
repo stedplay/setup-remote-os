@@ -72,6 +72,7 @@ def setup(c, new_ssh_port, key_file_path, mail_address):
   setup_sshd(c, new_ssh_port, key_file_path)
   setup_iptables(c, new_ssh_port)
   disable_ipv6(c)
+  setup_postfix(c)
 
 @print_time
 def setup_timezone(c):
@@ -170,6 +171,24 @@ def disable_ipv6(c):
   c.sudo(r'sed -i "s/^GRUB_CMDLINE_LINUX=\"\(.*\)\"$/GRUB_CMDLINE_LINUX=\"ipv6.disable=1 \1\"/" /etc/default/grub')
   c.run('diff /etc/default/grub /etc/default/grub_org', warn=True)
   c.sudo('update-grub')
+
+@print_time
+def setup_postfix(c):
+  # Prevent apt from showing dialogs during installation of postfix.
+  # https://serverfault.com/questions/143968/automate-the-installation-of-postfix-on-ubuntu
+  c.sudo(r'sh -c "echo postfix postfix/main_mailer_type string \"Internet Site\" | debconf-set-selections"')
+  c.sudo(f'sh -c "echo postfix postfix/mailname string $(uname -n) | debconf-set-selections"')
+  # Install postfix.
+  c.sudo('apt -y install postfix')
+
+  # Edit config.
+  c.sudo('cp -p /etc/postfix/main.cf /etc/postfix/main.cf_org')
+  ## Disable IPv6 in postfix.
+  c.sudo('sed -i "s/^inet_protocols = all$/inet_protocols = ipv4/" /etc/postfix/main.cf')
+  ## Encrypt mail.
+  c.sudo(f'sh -c "echo \'smtp_tls_security_level = may\' >> /etc/postfix/main.cf"')
+  c.run('diff /etc/postfix/main.cf /etc/postfix/main.cf_org', warn=True)
+  c.sudo('/etc/init.d/postfix restart')
 
 
 def main():
