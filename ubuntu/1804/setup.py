@@ -72,8 +72,8 @@ def setup(c, new_ssh_port, key_file_path, mail_address):
   setup_sshd(c, new_ssh_port, key_file_path)
   setup_iptables(c, new_ssh_port)
   disable_ipv6(c)
-  setup_postfix(c)
-  setup_logwatch(c, mail_address)
+  setup_postfix(c, mail_address)
+  setup_logwatch(c)
   reboot(c)
 
 @print_time
@@ -175,13 +175,19 @@ def disable_ipv6(c):
   c.sudo('update-grub')
 
 @print_time
-def setup_postfix(c):
+def setup_postfix(c, mail_address):
   # Prevent apt from showing dialogs during installation of postfix.
   # https://serverfault.com/questions/143968/automate-the-installation-of-postfix-on-ubuntu
   c.sudo(r'sh -c "echo postfix postfix/main_mailer_type string \"Internet Site\" | debconf-set-selections"')
   c.sudo(f'sh -c "echo postfix postfix/mailname string $(uname -n) | debconf-set-selections"')
   # Install postfix.
   c.sudo('apt -y install postfix')
+
+  # Forward mail addressed to root to mail_address.
+  c.sudo('cp -p /etc/aliases /etc/aliases_org')
+  c.sudo(r'sh -c "echo \"root: stedplay@gmail.com\" >> /etc/aliases"')
+  c.run('diff /etc/aliases /etc/aliases_org', warn=True)
+  c.sudo('postalias /etc/aliases')
 
   # Edit config.
   c.sudo('cp -p /etc/postfix/main.cf /etc/postfix/main.cf_org')
@@ -193,14 +199,12 @@ def setup_postfix(c):
   c.sudo('/etc/init.d/postfix restart')
 
 @print_time
-def setup_logwatch(c, mail_address):
+def setup_logwatch(c):
   # Install logwatch.
   c.sudo('apt -y install logwatch')
 
   # Edit config.
   c.sudo('cp -p /usr/share/logwatch/default.conf/logwatch.conf /etc/logwatch/conf/',)
-  ## Send result mail to mail_address.
-  c.sudo(f'sed -i "s/^MailTo = root$/MailTo = {mail_address}/" /etc/logwatch/conf/logwatch.conf',)
   ## Output result in more detail.
   c.sudo(f'sed -i "s/^Detail = Low$/Detail = High/" /etc/logwatch/conf/logwatch.conf',)
   c.run('diff /usr/share/logwatch/default.conf/logwatch.conf /etc/logwatch/conf/', warn=True)
