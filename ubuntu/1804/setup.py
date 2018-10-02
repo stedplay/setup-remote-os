@@ -67,7 +67,17 @@ def create_ssh_key(c):
 
 @print_time
 def setup(c, new_ssh_port, key_file_path, mail_address):
-  pass
+  setup_timezone(c)
+
+@print_time
+def setup_timezone(c):
+  # Set timezone.
+  c.run('timedatectl')
+  c.sudo('timedatectl set-timezone Asia/Tokyo')
+  c.run('timedatectl')
+  # Restart cron to update timezone.
+  c.sudo('/etc/init.d/cron restart')
+
 
 def main():
   # Prepare setup.
