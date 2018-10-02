@@ -3,6 +3,10 @@ from fabric import Connection, Config
 from getpass import getpass
 
 def prepare():
+  # Show usage.
+  if len(sys.argv) != 4:
+    sys.exit(f'Stop setup. \nUsage: python {sys.argv[0]} user_name@host_name:ssh_port new_ssh_port mail_address')
+
   # Arguments.
   print(f'sys.argv={sys.argv}')
   host = sys.argv[1]
