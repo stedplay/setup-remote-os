@@ -1,6 +1,7 @@
 import sys
 from fabric import Connection, Config
 from getpass import getpass
+from invoke import run
 
 def prepare():
   # Show usage.
@@ -24,6 +25,26 @@ def prepare():
   is_ubuntu = bool(int(c.run('cat /etc/os-release | grep -c "Ubuntu 18.04"', warn=True).stdout.strip()))
   if not is_ubuntu:
     sys.exit('Stop setup. OS is not Ubuntu.')
+
+  # Create ssh key.
+  key_file_path = create_ssh_key(c)
+  if key_file_path is None:
+    sys.exit('Stop setup. Failed to create ssh key.')
+
+def create_ssh_key(c):
+  # Parameters of ssh key.
+  key_type = 'ecdsa'
+  key_bits = 256
+  key_file_path = f'~/.ssh/{c.user}_{key_type}'         # <Remote user_name>_<key_type>
+  comment = run('uname -n', hide=True).stdout.strip()   # Local hostname
+  print(f"ssh-key's comment={comment}")
+  # Create ssh-key in local machine.
+  result = run(f'ssh-keygen -t {key_type} -b {key_bits} -f {key_file_path} -C {comment}', pty=True, echo=True, warn=True)
+  if result.failed:
+    return None
+  run(f'chmod 600 {key_file_path}.pub', echo=True)
+  run(f'ls -l {key_file_path}*', echo=True)
+  return key_file_path
 
 def setup():
   pass
