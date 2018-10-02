@@ -74,6 +74,7 @@ def setup(c, new_ssh_port, key_file_path, mail_address):
   disable_ipv6(c)
   setup_postfix(c)
   setup_logwatch(c, mail_address)
+  reboot(c)
 
 @print_time
 def setup_timezone(c):
@@ -207,6 +208,10 @@ def setup_logwatch(c, mail_address):
   c.sudo('mkdir -p /var/cache/logwatch')
   c.sudo('logwatch --output stdout')
 
+@print_time
+def reboot(c):
+  # Reboot OS.
+  c.sudo('reboot', warn=True)
 
 def main():
   # Prepare setup.
