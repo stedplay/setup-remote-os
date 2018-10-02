@@ -1,8 +1,24 @@
 import sys
+import time
 from fabric import Connection, Config
 from getpass import getpass
 from invoke import run
 
+def print_time(func):
+  """
+  Decorator to print execution time of function.
+  """
+  def _print_time(*args, **keyword):
+    func_name = func.__name__
+    print(f'Begin {func_name}()')
+    begin_at = time.time()
+    result = func(*args, **keyword)
+    measured_time = time.time() - begin_at
+    print(f'End {func_name}() {measured_time} second.')
+    return result
+  return _print_time
+
+@print_time
 def prepare():
   # Show usage.
   if len(sys.argv) != 4:
@@ -33,6 +49,7 @@ def prepare():
 
   return c, new_ssh_port, key_file_path, mail_address
 
+@print_time
 def create_ssh_key(c):
   # Parameters of ssh key.
   key_type = 'ecdsa'
@@ -48,6 +65,7 @@ def create_ssh_key(c):
   run(f'ls -l {key_file_path}*', echo=True)
   return key_file_path
 
+@print_time
 def setup(c, new_ssh_port, key_file_path, mail_address):
   pass
 
