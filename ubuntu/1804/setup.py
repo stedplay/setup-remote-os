@@ -69,6 +69,7 @@ def create_ssh_key(c):
 def setup(c, new_ssh_port, key_file_path, mail_address):
   setup_timezone(c)
   setup_apt(c)
+  setup_sshd(c, new_ssh_port, key_file_path)
 
 @print_time
 def setup_timezone(c):
@@ -95,6 +96,38 @@ def setup_apt(c):
   c.sudo("sed -i 's/^APT::Periodic::Update-Package-Lists \"1\";$/APT::Periodic::Update-Package-Lists \"0\";/' /etc/apt/apt.conf.d/20auto-upgrades")
   c.sudo("sed -i 's/^APT::Periodic::Unattended-Upgrade \"1\";$/APT::Periodic::Unattended-Upgrade \"0\";/' /etc/apt/apt.conf.d/20auto-upgrades")
   c.run('diff /etc/apt/apt.conf.d/20auto-upgrades /etc/apt/apt.conf.d/20auto-upgrades_org', warn=True)
+
+@print_time
+def setup_sshd(c, ssh_port, key_file_path):
+  # Edit sshd_config.
+  c.sudo('cp -p /etc/ssh/sshd_config /etc/ssh/sshd_config_org')
+  # Change ssh port number.
+  c.sudo(f'sed -i "s/^#Port 22$/Port {ssh_port}/" /etc/ssh/sshd_config')
+  # Prohibit ssh login as root user.
+  c.sudo('sed -i "s/^#PermitRootLogin prohibit-password$/PermitRootLogin no/" /etc/ssh/sshd_config')
+  # Enable public key authentication.
+  c.sudo('sed -i "s/^#PubkeyAuthentication yes$/PubkeyAuthentication yes/" /etc/ssh/sshd_config')
+  # Prohibit ssh login with password.
+  c.sudo('sed -i "s/^#PasswordAuthentication yes$/PasswordAuthentication no/" /etc/ssh/sshd_config')
+  # Specify the user who is allowed ssh login.
+  c.sudo(f'sh -c "echo \'AllowUsers {c.user}\' >> /etc/ssh/sshd_config"')
+  c.run('diff /etc/ssh/sshd_config /etc/ssh/sshd_config_org', warn=True)
+
+  # Create remote user's .ssh directory.
+  ssh_dir = f'/home/{c.user}/.ssh/'
+  c.sudo(f'mkdir -p {ssh_dir}', user=c.user)
+  c.sudo(f'chmod 700 {ssh_dir}')
+  # Upload public key of ssh.
+  ## Get full path of key file with the tilde(~) expanded.
+  key_file_full_path = run(f'echo {key_file_path}', hide=True).stdout.strip()
+  pub_key_string = run(f'cat {key_file_full_path}.pub', hide=True).stdout.strip()
+  c.run(f'echo {pub_key_string} >> {ssh_dir}authorized_keys')
+  c.run('ls -la ~/.ssh/')
+
+  # Check the validity of the configuration file and sanity of the keys.
+  c.sudo('sshd -t')
+  # Restart sshd
+  c.sudo('/etc/init.d/ssh restart', warn=True)
 
 
 def main():
