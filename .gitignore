@@ -1,0 +1,4 @@
+.sonarlint/
+.vagrant/
+.vscode/
+*.log

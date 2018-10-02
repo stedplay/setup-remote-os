@@ -1,0 +1,14 @@
+# Local server to test setup.py
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/bionic64"
+  config.vm.box_version = "20180917.0.0"
+  config.vm.hostname = "ubuntu-1804.local"
+  config.vm.network "private_network", ip: "192.168.33.11"
+  # Delete '#' below after setup. Same value as new_ssh_port.
+  #config.vm.network "forwarded_port", guest: 54321, host: 54321
+  #config.ssh.port = 54321
+  config.vm.provision "shell", inline: <<-SCRIPT
+sed -i "s/^PasswordAuthentication no$/#PasswordAuthentication yes/" /etc/ssh/sshd_config
+/etc/init.d/ssh restart
+  SCRIPT
+end
