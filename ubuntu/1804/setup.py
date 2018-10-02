@@ -71,6 +71,7 @@ def setup(c, new_ssh_port, key_file_path, mail_address):
   setup_apt(c)
   setup_sshd(c, new_ssh_port, key_file_path)
   setup_iptables(c, new_ssh_port)
+  disable_ipv6(c)
 
 @print_time
 def setup_timezone(c):
@@ -157,6 +158,18 @@ def setup_iptables(c, ssh_port):
   c.sudo('sh -c "echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections"')
   # Install iptables-persistent to save setting of iptables.
   c.sudo('apt -y install iptables-persistent')
+
+@print_time
+def disable_ipv6(c):
+  # Disable IPv6 in OS immediately.
+  c.run('ip a')
+  c.sudo('sysctl -w net.ipv6.conf.all.disable_ipv6=1')
+  c.run('ip a')
+  # Disable IPv6 in OS permanently.
+  c.sudo('cp -p /etc/default/grub /etc/default/grub_org')
+  c.sudo(r'sed -i "s/^GRUB_CMDLINE_LINUX=\"\(.*\)\"$/GRUB_CMDLINE_LINUX=\"ipv6.disable=1 \1\"/" /etc/default/grub')
+  c.run('diff /etc/default/grub /etc/default/grub_org', warn=True)
+  c.sudo('update-grub')
 
 
 def main():
