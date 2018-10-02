@@ -20,6 +20,11 @@ def prepare():
   # Check connection.
   c.run('date')
 
+  # Check OS.
+  is_ubuntu = bool(int(c.run('cat /etc/os-release | grep -c "Ubuntu 18.04"', warn=True).stdout.strip()))
+  if not is_ubuntu:
+    sys.exit('Stop setup. OS is not Ubuntu.')
+
 def setup():
   pass
 
