@@ -73,6 +73,7 @@ def setup(c, new_ssh_port, key_file_path, mail_address):
   setup_iptables(c, new_ssh_port)
   disable_ipv6(c)
   setup_postfix(c)
+  setup_logwatch(c, mail_address)
 
 @print_time
 def setup_timezone(c):
@@ -189,6 +190,22 @@ def setup_postfix(c):
   c.sudo(f'sh -c "echo \'smtp_tls_security_level = may\' >> /etc/postfix/main.cf"')
   c.run('diff /etc/postfix/main.cf /etc/postfix/main.cf_org', warn=True)
   c.sudo('/etc/init.d/postfix restart')
+
+@print_time
+def setup_logwatch(c, mail_address):
+  # Install logwatch.
+  c.sudo('apt -y install logwatch')
+
+  # Edit config.
+  c.sudo('cp -p /usr/share/logwatch/default.conf/logwatch.conf /etc/logwatch/conf/',)
+  ## Send result mail to mail_address.
+  c.sudo(f'sed -i "s/^MailTo = root$/MailTo = {mail_address}/" /etc/logwatch/conf/logwatch.conf',)
+  ## Output result in more detail.
+  c.sudo(f'sed -i "s/^Detail = Low$/Detail = High/" /etc/logwatch/conf/logwatch.conf',)
+  c.run('diff /usr/share/logwatch/default.conf/logwatch.conf /etc/logwatch/conf/', warn=True)
+  # Execute logwatch.
+  c.sudo('mkdir -p /var/cache/logwatch')
+  c.sudo('logwatch --output stdout')
 
 
 def main():
