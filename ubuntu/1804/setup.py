@@ -68,6 +68,7 @@ def create_ssh_key(c):
 @print_time
 def setup(c, new_ssh_port, key_file_path, mail_address):
   setup_timezone(c)
+  setup_apt(c)
 
 @print_time
 def setup_timezone(c):
@@ -77,6 +78,23 @@ def setup_timezone(c):
   c.run('timedatectl')
   # Restart cron to update timezone.
   c.sudo('/etc/init.d/cron restart')
+
+@print_time
+def setup_apt(c):
+  # Update package list.
+  c.sudo('apt update')
+  # Install basic package.
+  c.sudo('apt -y install curl')
+  # Stop automatic updates other than Ubuntu security updates.
+  ## Create 20auto-upgrades
+  c.sudo('apt -y install unattended-upgrades')
+  c.sudo(r'sh -c "echo \"unattended-upgrades unattended-upgrades/enable_auto_updates boolean true\" | debconf-set-selections"')
+  c.sudo('dpkg-reconfigure --frontend noninteractive --priority=low unattended-upgrades')
+  ## Edit 20auto-upgrades
+  c.sudo('cp -p /etc/apt/apt.conf.d/20auto-upgrades /etc/apt/apt.conf.d/20auto-upgrades_org')
+  c.sudo("sed -i 's/^APT::Periodic::Update-Package-Lists \"1\";$/APT::Periodic::Update-Package-Lists \"0\";/' /etc/apt/apt.conf.d/20auto-upgrades")
+  c.sudo("sed -i 's/^APT::Periodic::Unattended-Upgrade \"1\";$/APT::Periodic::Unattended-Upgrade \"0\";/' /etc/apt/apt.conf.d/20auto-upgrades")
+  c.run('diff /etc/apt/apt.conf.d/20auto-upgrades /etc/apt/apt.conf.d/20auto-upgrades_org', warn=True)
 
 
 def main():
