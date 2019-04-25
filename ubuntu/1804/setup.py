@@ -185,7 +185,7 @@ def setup_postfix(c, mail_address):
 
   # Forward mail addressed to root to mail_address.
   c.sudo('cp -p /etc/aliases /etc/aliases_org')
-  c.sudo(r'sh -c "echo \"root: stedplay@gmail.com\" >> /etc/aliases"')
+  c.sudo(fr'sh -c "echo \"root: {mail_address}\" >> /etc/aliases"')
   c.run('diff /etc/aliases /etc/aliases_org', warn=True)
   c.sudo('postalias /etc/aliases')
 
