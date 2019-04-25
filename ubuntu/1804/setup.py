@@ -74,6 +74,7 @@ def setup(c, new_ssh_port, key_file_path, mail_address):
   disable_ipv6(c)
   setup_postfix(c, mail_address)
   setup_logwatch(c)
+  setup_docker(c)
   reboot(c)
 
 @print_time
@@ -213,6 +214,16 @@ def setup_logwatch(c):
   # Execute logwatch.
   c.sudo('mkdir -p /var/cache/logwatch')
   c.sudo('logwatch --output stdout')
+
+@print_time
+def setup_docker(c):
+  # Install docker.
+  c.run('curl https://get.docker.com | sh')
+  c.sudo('usermod -aG docker vagrant')
+  # Install docker-compose.
+  docker_compose_version = c.run('curl https://api.github.com/repos/docker/compose/releases/latest | jq .name -r').stdout.strip()
+  c.sudo(f'curl -L "https://github.com/docker/compose/releases/download/{docker_compose_version}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose')
+  c.sudo('chmod +x /usr/local/bin/docker-compose')
 
 @print_time
 def reboot(c):
