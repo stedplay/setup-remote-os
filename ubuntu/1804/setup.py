@@ -90,7 +90,7 @@ def setup_apt(c):
   # Update package list.
   c.sudo('apt update')
   # Install basic package.
-  c.sudo('apt -y install curl')
+  c.sudo('apt -y install curl git')
   # Stop automatic updates other than Ubuntu security updates.
   ## Create 20auto-upgrades
   c.sudo('apt -y install unattended-upgrades')
