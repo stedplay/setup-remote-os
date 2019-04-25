@@ -114,6 +114,8 @@ def setup_sshd(c, ssh_port, key_file_path):
   c.sudo('sed -i "s/^#PubkeyAuthentication yes$/PubkeyAuthentication yes/" /etc/ssh/sshd_config')
   # Prohibit ssh login with password.
   c.sudo('sed -i "s/^#PasswordAuthentication yes$/PasswordAuthentication no/" /etc/ssh/sshd_config')
+  # Set to send packets every 5 minutes so that ssh connection is not disconnected.
+  c.sudo('sed -i "s/^#ClientAliveInterval 0$/ClientAliveInterval 300/" /etc/ssh/sshd_config')
   # Specify the user who is allowed ssh login.
   c.sudo(f'sh -c "echo \'AllowUsers {c.user}\' >> /etc/ssh/sshd_config"')
   c.run('diff /etc/ssh/sshd_config /etc/ssh/sshd_config_org', warn=True)
