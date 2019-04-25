@@ -10,6 +10,7 @@ The overview of setup is as follows.
 - Setup sshd
 - Setup iptables
 - Setup logwatch
+- Setup docker
 - Disable ipv6
 - Reboot
 

@@ -74,6 +74,7 @@ def setup(c, new_ssh_port, key_file_path, mail_address):
   disable_ipv6(c)
   setup_postfix(c, mail_address)
   setup_logwatch(c)
+  setup_docker(c)
   reboot(c)
 
 @print_time
@@ -90,7 +91,7 @@ def setup_apt(c):
   # Update package list.
   c.sudo('apt update')
   # Install basic package.
-  c.sudo('apt -y install curl')
+  c.sudo('apt -y install curl git jq')
   # Stop automatic updates other than Ubuntu security updates.
   ## Create 20auto-upgrades
   c.sudo('apt -y install unattended-upgrades')
@@ -114,6 +115,8 @@ def setup_sshd(c, ssh_port, key_file_path):
   c.sudo('sed -i "s/^#PubkeyAuthentication yes$/PubkeyAuthentication yes/" /etc/ssh/sshd_config')
   # Prohibit ssh login with password.
   c.sudo('sed -i "s/^#PasswordAuthentication yes$/PasswordAuthentication no/" /etc/ssh/sshd_config')
+  # Set to send packets every 5 minutes so that ssh connection is not disconnected.
+  c.sudo('sed -i "s/^#ClientAliveInterval 0$/ClientAliveInterval 300/" /etc/ssh/sshd_config')
   # Specify the user who is allowed ssh login.
   c.sudo(f'sh -c "echo \'AllowUsers {c.user}\' >> /etc/ssh/sshd_config"')
   c.run('diff /etc/ssh/sshd_config /etc/ssh/sshd_config_org', warn=True)
@@ -185,7 +188,7 @@ def setup_postfix(c, mail_address):
 
   # Forward mail addressed to root to mail_address.
   c.sudo('cp -p /etc/aliases /etc/aliases_org')
-  c.sudo(r'sh -c "echo \"root: stedplay@gmail.com\" >> /etc/aliases"')
+  c.sudo(fr'sh -c "echo \"root: {mail_address}\" >> /etc/aliases"')
   c.run('diff /etc/aliases /etc/aliases_org', warn=True)
   c.sudo('postalias /etc/aliases')
 
@@ -211,6 +214,16 @@ def setup_logwatch(c):
   # Execute logwatch.
   c.sudo('mkdir -p /var/cache/logwatch')
   c.sudo('logwatch --output stdout')
+
+@print_time
+def setup_docker(c):
+  # Install docker.
+  c.run('curl https://get.docker.com | sh')
+  c.sudo('usermod -aG docker vagrant')
+  # Install docker-compose.
+  docker_compose_version = c.run('curl https://api.github.com/repos/docker/compose/releases/latest | jq .name -r').stdout.strip()
+  c.sudo(f'curl -L "https://github.com/docker/compose/releases/download/{docker_compose_version}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose')
+  c.sudo('chmod +x /usr/local/bin/docker-compose')
 
 @print_time
 def reboot(c):
