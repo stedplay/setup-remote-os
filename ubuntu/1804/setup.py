@@ -21,6 +21,8 @@ def print_time(func):
 
 @print_time
 def prepare():
+  # Show execution date.
+  run('date')
   # Show usage.
   if len(sys.argv) != 4:
     sys.exit(f'Stop setup. \nUsage: python {sys.argv[0]} user_name@host_name:ssh_port new_ssh_port mail_address')
