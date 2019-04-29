@@ -218,8 +218,8 @@ def setup_logwatch(c):
 @print_time
 def setup_docker(c):
   # Install docker.
-  c.run('curl https://get.docker.com | sh')
-  c.sudo('usermod -aG docker vagrant')
+  c.sudo(f'sh -c "curl https://get.docker.com | sh"')
+  c.sudo(f'usermod -aG docker {c.user}')
   # Install docker-compose.
   docker_compose_version = c.run('curl https://api.github.com/repos/docker/compose/releases/latest | jq .name -r').stdout.strip()
   c.sudo(f'curl -L "https://github.com/docker/compose/releases/download/{docker_compose_version}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose')
