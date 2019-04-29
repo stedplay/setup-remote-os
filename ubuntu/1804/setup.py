@@ -1,3 +1,4 @@
+import re
 import sys
 import time
 from fabric import Connection, Config
@@ -26,17 +27,13 @@ def prepare():
 
   # Arguments.
   print(f'sys.argv={sys.argv}')
-  host = sys.argv[1]
   new_ssh_port = int(sys.argv[2])
   mail_address = sys.argv[3]
-  password = getpass(f"{host.split(':')[0]}'s password? ")
+  ssh_user_name, host_fqdn, ssh_port = re.split('[@:]', sys.argv[1])
+  ssh_user_password = getpass(f"{ssh_user_name}@{host_fqdn}'s password?: ")
 
   # Create connection.
-  config = Config(overrides={'sudo': {'password': password, 'prompt': '[sudo] password: \n'}, 'run': {'echo': True}})
-  c = Connection(host, connect_kwargs={"password": password}, config=config)
-  # Check connection.
-  c.run('date')
-
+  c = connect(ssh_user_name, host_fqdn, ssh_port, ssh_user_password)
   # Check OS.
   is_ubuntu = bool(int(c.run('cat /etc/os-release | grep -c "Ubuntu 18.04"', warn=True).stdout.strip()))
   if not is_ubuntu:
@@ -48,6 +45,16 @@ def prepare():
     sys.exit('Stop setup. Failed to create ssh key.')
 
   return c, new_ssh_port, key_file_path, mail_address
+
+@print_time
+def connect(ssh_user_name, host_fqdn, ssh_port, ssh_user_password):
+  host = f"{ssh_user_name}@{host_fqdn}:{ssh_port}"
+  # Create connection.
+  config = Config(overrides={'sudo': {'password': ssh_user_password, 'prompt': '[sudo] password: \n'}, 'run': {'echo': True}})
+  c = Connection(host, connect_kwargs={"password": ssh_user_password}, config=config)
+  # Check connection.
+  c.run('echo "Login user is $(whoami)"')
+  return c
 
 @print_time
 def create_ssh_key(c):
