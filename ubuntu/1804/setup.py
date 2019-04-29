@@ -24,14 +24,15 @@ def prepare():
   # Show execution date.
   run('date')
   # Show usage.
-  if len(sys.argv) != 4:
+  if len(sys.argv) != 5:
     sys.exit(f'Stop setup. \nUsage: python {sys.argv[0]} user_name@host_name:ssh_port new_ssh_port mail_address')
 
   # Arguments.
   print(f'sys.argv={sys.argv}')
-  new_ssh_port = int(sys.argv[2])
-  mail_address = sys.argv[3]
   ssh_user_name, host_fqdn, ssh_port = re.split('[@:]', sys.argv[1])
+  new_ssh_user_name = sys.argv[2]
+  new_ssh_port = int(sys.argv[3])
+  mail_address = sys.argv[4]
   ssh_user_password = getpass(f"{ssh_user_name}@{host_fqdn}'s password?: ")
 
   # Create connection.
@@ -40,6 +41,23 @@ def prepare():
   is_ubuntu = bool(int(c.run('cat /etc/os-release | grep -c "Ubuntu 18.04"', warn=True).stdout.strip()))
   if not is_ubuntu:
     sys.exit('Stop setup. OS is not Ubuntu.')
+
+  if new_ssh_user_name != ssh_user_name:
+    # Ask new ssh user's password twice.
+    while True:
+      new_ssh_user_password = getpass(f"{new_ssh_user_name}@{host_fqdn}'s password?: ")
+      agein_new_ssh_user_password = getpass(f"Enter same password again: ")
+      if new_ssh_user_password == agein_new_ssh_user_password:
+        break
+      print('Passwords do not match. Try again.')
+    # Add new ssh user.
+    add_user(c, new_ssh_user_name, new_ssh_user_password)
+    # Disconnect.
+    c.close()
+    # Create new connection.
+    c = connect(new_ssh_user_name, host_fqdn, ssh_port, new_ssh_user_password)
+  else:
+    print('Not add user.')
 
   # Create ssh key.
   key_file_path = create_ssh_key(c)
@@ -57,6 +75,14 @@ def connect(ssh_user_name, host_fqdn, ssh_port, ssh_user_password):
   # Check connection.
   c.run('echo "Login user is $(whoami)"')
   return c
+
+@print_time
+def add_user(c, new_user_name, new_user_password):
+  # Add user.
+  c.sudo(f'useradd -G sudo -m -s /bin/bash {new_user_name}')
+  # Set password of new user.
+  c.sudo(f'sh -c "echo {new_user_name}:{new_user_password} | chpasswd"', hide=True)
+  print(f'sh -c "echo {new_user_name}:*** | chpasswd"')
 
 @print_time
 def create_ssh_key(c):
