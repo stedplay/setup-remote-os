@@ -1,3 +1,4 @@
+import re
 import sys
 import time
 from fabric import Connection, Config
@@ -20,34 +21,75 @@ def print_time(func):
 
 @print_time
 def prepare():
+  # Show execution date.
+  run('date')
   # Show usage.
-  if len(sys.argv) != 4:
+  if len(sys.argv) != 5:
     sys.exit(f'Stop setup. \nUsage: python {sys.argv[0]} user_name@host_name:ssh_port new_ssh_port mail_address')
 
   # Arguments.
   print(f'sys.argv={sys.argv}')
-  host = sys.argv[1]
-  new_ssh_port = int(sys.argv[2])
-  mail_address = sys.argv[3]
-  password = getpass(f"{host.split(':')[0]}'s password? ")
+  ssh_user_name, host_fqdn, ssh_port = re.split('[@:]', sys.argv[1])
+  new_ssh_user_name = sys.argv[2]
+  new_ssh_port = int(sys.argv[3])
+  mail_address = sys.argv[4]
+  ssh_user_password = getpass(f"{ssh_user_name}@{host_fqdn}'s password?: ")
 
   # Create connection.
-  config = Config(overrides={'sudo': {'password': password, 'prompt': '[sudo] password: \n'}, 'run': {'echo': True}})
-  c = Connection(host, connect_kwargs={"password": password}, config=config)
-  # Check connection.
-  c.run('date')
-
+  c = connect(ssh_user_name, host_fqdn, ssh_port, ssh_user_password)
   # Check OS.
   is_ubuntu = bool(int(c.run('cat /etc/os-release | grep -c "Ubuntu 18.04"', warn=True).stdout.strip()))
   if not is_ubuntu:
     sys.exit('Stop setup. OS is not Ubuntu.')
 
-  # Create ssh key.
-  key_file_path = create_ssh_key(c)
-  if key_file_path is None:
-    sys.exit('Stop setup. Failed to create ssh key.')
+  return c, new_ssh_user_name, new_ssh_port, mail_address
 
-  return c, new_ssh_port, key_file_path, mail_address
+@print_time
+def connect(ssh_user_name, host_fqdn, ssh_port, ssh_user_password):
+  # Create connection.
+  config = Config(overrides={'sudo': {'password': ssh_user_password, 'prompt': '[sudo] password: \n'}, 'run': {'echo': True}})
+  c = Connection(host=host_fqdn, user=ssh_user_name, port=ssh_port, connect_kwargs={"password": ssh_user_password}, config=config)
+  # Check connection.
+  c.run('echo "Login user is $(whoami)"')
+  return c
+
+@print_time
+def setup(c, new_ssh_user_name, new_ssh_port, mail_address):
+  c_ = add_user(c, new_ssh_user_name)
+  key_file_path = create_ssh_key(c_)
+  setup_timezone(c_)
+  setup_apt(c_)
+  setup_sshd(c_, new_ssh_port, key_file_path)
+  setup_iptables(c_, new_ssh_port)
+  disable_ipv6(c_)
+  setup_postfix(c_, mail_address)
+  setup_logwatch(c_)
+  setup_docker(c_)
+  reboot(c_)
+
+@print_time
+def add_user(c, new_ssh_user_name):
+  if new_ssh_user_name != c.user:
+    # Ask new ssh user's password twice.
+    while True:
+      new_ssh_user_password = getpass(f"{new_ssh_user_name}@{c.host}'s password?: ")
+      agein_new_ssh_user_password = getpass(f"Enter same password again: ")
+      if new_ssh_user_password == agein_new_ssh_user_password:
+        break
+      print('Passwords do not match. Try again.')
+    # Add user.
+    c.sudo(f'useradd -G sudo -m -s /bin/bash {new_ssh_user_name}')
+    # Set password of new user.
+    c.sudo(f'sh -c "echo {new_ssh_user_name}:{new_ssh_user_password} | chpasswd"', hide=True)
+    print(f'sh -c "echo {new_ssh_user_name}:*** | chpasswd"')
+    # Disconnect.
+    c.close()
+    # Create new connection.
+    c_ = connect(new_ssh_user_name, c.host, c.port, new_ssh_user_password)
+  else:
+    print('Not add user.')
+    c_ = c
+  return c_
 
 @print_time
 def create_ssh_key(c):
@@ -60,22 +102,10 @@ def create_ssh_key(c):
   # Create ssh-key in local machine.
   result = run(f'ssh-keygen -t {key_type} -b {key_bits} -f {key_file_path} -C {comment}', pty=True, echo=True, warn=True)
   if result.failed:
-    return None
+    sys.exit('Stop setup. Failed to create ssh key.')
   run(f'chmod 600 {key_file_path}.pub', echo=True)
   run(f'ls -l {key_file_path}*', echo=True)
   return key_file_path
-
-@print_time
-def setup(c, new_ssh_port, key_file_path, mail_address):
-  setup_timezone(c)
-  setup_apt(c)
-  setup_sshd(c, new_ssh_port, key_file_path)
-  setup_iptables(c, new_ssh_port)
-  disable_ipv6(c)
-  setup_postfix(c, mail_address)
-  setup_logwatch(c)
-  setup_docker(c)
-  reboot(c)
 
 @print_time
 def setup_timezone(c):
@@ -218,8 +248,8 @@ def setup_logwatch(c):
 @print_time
 def setup_docker(c):
   # Install docker.
-  c.run('curl https://get.docker.com | sh')
-  c.sudo('usermod -aG docker vagrant')
+  c.sudo(f'sh -c "curl https://get.docker.com | sh"')
+  c.sudo(f'usermod -aG docker {c.user}')
   # Install docker-compose.
   docker_compose_version = c.run('curl https://api.github.com/repos/docker/compose/releases/latest | jq .name -r').stdout.strip()
   c.sudo(f'curl -L "https://github.com/docker/compose/releases/download/{docker_compose_version}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose')
@@ -232,8 +262,8 @@ def reboot(c):
 
 def main():
   # Prepare setup.
-  c, new_ssh_port, key_file_path, mail_address = prepare()
+  c, new_ssh_user_name, new_ssh_port, mail_address = prepare()
   # Start setup.
-  setup(c, new_ssh_port, key_file_path, mail_address)
+  setup(c, new_ssh_user_name, new_ssh_port, mail_address)
 
 main()
