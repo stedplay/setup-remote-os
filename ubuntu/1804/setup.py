@@ -46,10 +46,9 @@ def prepare():
 
 @print_time
 def connect(ssh_user_name, host_fqdn, ssh_port, ssh_user_password):
-  host = f"{ssh_user_name}@{host_fqdn}:{ssh_port}"
   # Create connection.
   config = Config(overrides={'sudo': {'password': ssh_user_password, 'prompt': '[sudo] password: \n'}, 'run': {'echo': True}})
-  c = Connection(host, connect_kwargs={"password": ssh_user_password}, config=config)
+  c = Connection(host=host_fqdn, user=ssh_user_name, port=ssh_port, connect_kwargs={"password": ssh_user_password}, config=config)
   # Check connection.
   c.run('echo "Login user is $(whoami)"')
   return c
