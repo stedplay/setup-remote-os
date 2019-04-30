@@ -42,22 +42,8 @@ def prepare():
   if not is_ubuntu:
     sys.exit('Stop setup. OS is not Ubuntu.')
 
-  if new_ssh_user_name != ssh_user_name:
-    # Ask new ssh user's password twice.
-    while True:
-      new_ssh_user_password = getpass(f"{new_ssh_user_name}@{host_fqdn}'s password?: ")
-      agein_new_ssh_user_password = getpass(f"Enter same password again: ")
-      if new_ssh_user_password == agein_new_ssh_user_password:
-        break
-      print('Passwords do not match. Try again.')
-    # Add new ssh user.
-    add_user(c, new_ssh_user_name, new_ssh_user_password)
-    # Disconnect.
-    c.close()
-    # Create new connection.
-    c = connect(new_ssh_user_name, host_fqdn, ssh_port, new_ssh_user_password)
-  else:
-    print('Not add user.')
+  # Add new ssh user.
+  c = add_user(c, new_ssh_user_name)
 
   return c, new_ssh_port, mail_address
 
@@ -72,12 +58,28 @@ def connect(ssh_user_name, host_fqdn, ssh_port, ssh_user_password):
   return c
 
 @print_time
-def add_user(c, new_user_name, new_user_password):
-  # Add user.
-  c.sudo(f'useradd -G sudo -m -s /bin/bash {new_user_name}')
-  # Set password of new user.
-  c.sudo(f'sh -c "echo {new_user_name}:{new_user_password} | chpasswd"', hide=True)
-  print(f'sh -c "echo {new_user_name}:*** | chpasswd"')
+def add_user(c, new_ssh_user_name):
+  if new_ssh_user_name != c.user:
+    # Ask new ssh user's password twice.
+    while True:
+      new_ssh_user_password = getpass(f"{new_ssh_user_name}@{c.host}'s password?: ")
+      agein_new_ssh_user_password = getpass(f"Enter same password again: ")
+      if new_ssh_user_password == agein_new_ssh_user_password:
+        break
+      print('Passwords do not match. Try again.')
+    # Add user.
+    c.sudo(f'useradd -G sudo -m -s /bin/bash {new_ssh_user_name}')
+    # Set password of new user.
+    c.sudo(f'sh -c "echo {new_ssh_user_name}:{new_ssh_user_password} | chpasswd"', hide=True)
+    print(f'sh -c "echo {new_ssh_user_name}:*** | chpasswd"')
+    # Disconnect.
+    c.close()
+    # Create new connection.
+    connection = connect(new_ssh_user_name, c.host, c.port, new_ssh_user_password)
+  else:
+    print('Not add user.')
+    connection = c
+  return connection
 
 @print_time
 def create_ssh_key(c):
