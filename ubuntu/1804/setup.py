@@ -59,12 +59,7 @@ def prepare():
   else:
     print('Not add user.')
 
-  # Create ssh key.
-  key_file_path = create_ssh_key(c)
-  if key_file_path is None:
-    sys.exit('Stop setup. Failed to create ssh key.')
-
-  return c, new_ssh_port, key_file_path, mail_address
+  return c, new_ssh_port, mail_address
 
 @print_time
 def connect(ssh_user_name, host_fqdn, ssh_port, ssh_user_password):
@@ -95,13 +90,14 @@ def create_ssh_key(c):
   # Create ssh-key in local machine.
   result = run(f'ssh-keygen -t {key_type} -b {key_bits} -f {key_file_path} -C {comment}', pty=True, echo=True, warn=True)
   if result.failed:
-    return None
+    sys.exit('Stop setup. Failed to create ssh key.')
   run(f'chmod 600 {key_file_path}.pub', echo=True)
   run(f'ls -l {key_file_path}*', echo=True)
   return key_file_path
 
 @print_time
-def setup(c, new_ssh_port, key_file_path, mail_address):
+def setup(c, new_ssh_port, mail_address):
+  key_file_path = create_ssh_key(c)
   setup_timezone(c)
   setup_apt(c)
   setup_sshd(c, new_ssh_port, key_file_path)
@@ -267,8 +263,8 @@ def reboot(c):
 
 def main():
   # Prepare setup.
-  c, new_ssh_port, key_file_path, mail_address = prepare()
+  c, new_ssh_port, mail_address = prepare()
   # Start setup.
-  setup(c, new_ssh_port, key_file_path, mail_address)
+  setup(c, new_ssh_port, mail_address)
 
 main()
