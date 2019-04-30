@@ -42,10 +42,7 @@ def prepare():
   if not is_ubuntu:
     sys.exit('Stop setup. OS is not Ubuntu.')
 
-  # Add new ssh user.
-  c = add_user(c, new_ssh_user_name)
-
-  return c, new_ssh_port, mail_address
+  return c, new_ssh_user_name, new_ssh_port, mail_address
 
 @print_time
 def connect(ssh_user_name, host_fqdn, ssh_port, ssh_user_password):
@@ -98,7 +95,8 @@ def create_ssh_key(c):
   return key_file_path
 
 @print_time
-def setup(c, new_ssh_port, mail_address):
+def setup(c, new_ssh_user_name, new_ssh_port, mail_address):
+  c = add_user(c, new_ssh_user_name)
   key_file_path = create_ssh_key(c)
   setup_timezone(c)
   setup_apt(c)
@@ -265,8 +263,8 @@ def reboot(c):
 
 def main():
   # Prepare setup.
-  c, new_ssh_port, mail_address = prepare()
+  c, new_ssh_user_name, new_ssh_port, mail_address = prepare()
   # Start setup.
-  setup(c, new_ssh_port, mail_address)
+  setup(c, new_ssh_user_name, new_ssh_port, mail_address)
 
 main()
