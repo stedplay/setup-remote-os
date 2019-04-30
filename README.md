@@ -4,6 +4,7 @@ Fabric code to setup OS installed in remote machine.
 
 The overview of setup is as follows.
 
+- Add user to connect by ssh
 - Create ssh key
 - Setup timezone
 - Setup apt
@@ -50,16 +51,30 @@ Run setup.py to the OS immediately after installation.
 
 ```
 $ cd ./ubuntu/1804
-$ python setup.py user_name@host_name:ssh_port new_ssh_port mail_address 2>&1 | tee user_name_$(date +'%Y%m%d_%H%M%S').log
+$ python setup.py ssh_user_name@host_fqdn:ssh_port new_ssh_user_name new_ssh_port mail_address 2>&1 | tee new_ssh_user_name_$(date +'%Y%m%d_%H%M%S').log
 ```
 
 #### Example using local test server on vagrant
 
+##### How to setup
+
+###### Start vagrant environment
+
 ```
 $ cd ./ubuntu/1804
 $ vagrant up
-$ python setup.py vagrant@ubuntu-1804.local:22 54321 example@gmail.com 2>&1 | tee vagrant_$(date +'%Y%m%d_%H%M%S').log
+```
+
+###### Case: add ssh user
+
+Set arguments as `ssh_user_name != new_ssh_user_name`
+
+```
+$ python setup.py vagrant@ubuntu-1804.local:22 testuser 54321 example@gmail.com 2>&1 | tee testuser_$(date +'%Y%m%d_%H%M%S').log
 vagrant@ubuntu-1804.local's password? vagrant
+...
+testuser@ubuntu-1804.local's password?: any_string_password
+Enter same password again: any_string_password
 ...
 Enter passphrase (empty for no passphrase): any_string_passphrase
 Enter same passphrase again: any_string_passphrase
@@ -67,12 +82,28 @@ Enter same passphrase again: any_string_passphrase
 $
 ```
 
-##### How to SSH login with new_ssh_port after setup
+###### Case: not add ssh user
+
+Set arguments as `ssh_user_name == new_ssh_user_name`
 
 ```
-$ ssh -p 54321 -i ~/.ssh/vagrant_ecdsa vagrant@ubuntu-1804.local
-Enter passphrase for key '~/.ssh/vagrant_ecdsa': any_string_passphrase
+$ python setup.py vagrant@ubuntu-1804.local:22 vagrant 54321 example@gmail.com 2>&1 | tee vagrant_$(date +'%Y%m%d_%H%M%S').log
+vagrant@ubuntu-1804.local's password? vagrant
+...
+Not add user.
+...
+Enter passphrase (empty for no passphrase): any_string_passphrase
+Enter same passphrase again: any_string_passphrase
+...
+$
+```
+
+##### How to SSH login with new_ssh_user_name & new_ssh_port after setup
+
+```
+$ ssh -p 54321 -i ~/.ssh/testuser_ecdsa testuser@ubuntu-1804.local
+Enter passphrase for key '~/.ssh/testuser_ecdsa': any_string_passphrase
 Welcome to Ubuntu 18.04.1 LTS (GNU/Linux 4.15.0-34-generic x86_64)
 ...
-vagrant@ubuntu-1804:~$
+testuser@ubuntu-1804:~$
 ```
