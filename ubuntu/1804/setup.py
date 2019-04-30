@@ -55,17 +55,17 @@ def connect(ssh_user_name, host_fqdn, ssh_port, ssh_user_password):
 
 @print_time
 def setup(c, new_ssh_user_name, new_ssh_port, mail_address):
-  c = add_user(c, new_ssh_user_name)
-  key_file_path = create_ssh_key(c)
-  setup_timezone(c)
-  setup_apt(c)
-  setup_sshd(c, new_ssh_port, key_file_path)
-  setup_iptables(c, new_ssh_port)
-  disable_ipv6(c)
-  setup_postfix(c, mail_address)
-  setup_logwatch(c)
-  setup_docker(c)
-  reboot(c)
+  c_ = add_user(c, new_ssh_user_name)
+  key_file_path = create_ssh_key(c_)
+  setup_timezone(c_)
+  setup_apt(c_)
+  setup_sshd(c_, new_ssh_port, key_file_path)
+  setup_iptables(c_, new_ssh_port)
+  disable_ipv6(c_)
+  setup_postfix(c_, mail_address)
+  setup_logwatch(c_)
+  setup_docker(c_)
+  reboot(c_)
 
 @print_time
 def add_user(c, new_ssh_user_name):
@@ -85,11 +85,11 @@ def add_user(c, new_ssh_user_name):
     # Disconnect.
     c.close()
     # Create new connection.
-    connection = connect(new_ssh_user_name, c.host, c.port, new_ssh_user_password)
+    c_ = connect(new_ssh_user_name, c.host, c.port, new_ssh_user_password)
   else:
     print('Not add user.')
-    connection = c
-  return connection
+    c_ = c
+  return c_
 
 @print_time
 def create_ssh_key(c):
