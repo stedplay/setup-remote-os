@@ -55,6 +55,20 @@ def connect(ssh_user_name, host_fqdn, ssh_port, ssh_user_password):
   return c
 
 @print_time
+def setup(c, new_ssh_user_name, new_ssh_port, mail_address):
+  c = add_user(c, new_ssh_user_name)
+  key_file_path = create_ssh_key(c)
+  setup_timezone(c)
+  setup_apt(c)
+  setup_sshd(c, new_ssh_port, key_file_path)
+  setup_iptables(c, new_ssh_port)
+  disable_ipv6(c)
+  setup_postfix(c, mail_address)
+  setup_logwatch(c)
+  setup_docker(c)
+  reboot(c)
+
+@print_time
 def add_user(c, new_ssh_user_name):
   if new_ssh_user_name != c.user:
     # Ask new ssh user's password twice.
@@ -93,20 +107,6 @@ def create_ssh_key(c):
   run(f'chmod 600 {key_file_path}.pub', echo=True)
   run(f'ls -l {key_file_path}*', echo=True)
   return key_file_path
-
-@print_time
-def setup(c, new_ssh_user_name, new_ssh_port, mail_address):
-  c = add_user(c, new_ssh_user_name)
-  key_file_path = create_ssh_key(c)
-  setup_timezone(c)
-  setup_apt(c)
-  setup_sshd(c, new_ssh_port, key_file_path)
-  setup_iptables(c, new_ssh_port)
-  disable_ipv6(c)
-  setup_postfix(c, mail_address)
-  setup_logwatch(c)
-  setup_docker(c)
-  reboot(c)
 
 @print_time
 def setup_timezone(c):
